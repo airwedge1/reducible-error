@@ -24,7 +24,7 @@ namespace WasmApp.Services
             Http = client;
         }
 
-        public async Task<DataEnvelope<WeatherForecast>> GetForecastListAsync(DataSourceRequest gridRequest)
+        public async Task<DataEnvelope<WeatherForecastModel>> GetForecastListAsync(DataSourceRequest gridRequest)
         {
             
             HttpResponseMessage response = await Http.PostAsJsonAsync("WeatherForecast", gridRequest);
@@ -34,7 +34,7 @@ namespace WasmApp.Services
 
             if (response.StatusCode == System.Net.HttpStatusCode.OK)
             {
-                return await response.Content.ReadFromJsonAsync<DataEnvelope<WeatherForecast>>();
+                return await response.Content.ReadFromJsonAsync<DataEnvelope<WeatherForecastModel>>();
             }
 
             throw new Exception($"The service returned with status {response.StatusCode}");

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace WasmApp.Shared
 {
-    public class WeatherForecast
+    public class WeatherForecastModel
     {
         public int Id { get; set; }
 
