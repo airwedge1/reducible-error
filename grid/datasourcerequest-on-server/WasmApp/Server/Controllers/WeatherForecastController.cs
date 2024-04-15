@@ -40,24 +40,6 @@ namespace WasmApp.Server.Controllers
         [HttpPost]
         public async Task<DataEnvelope<WeatherForecastModel>> Post([FromBody] DataSourceRequest gridRequest)
         {
-            // generate some data for the sake of this demo
-            //if (_forecasts == null)
-            //{
-            //    var rng = new Random();
-            //    var startDate = DateTime.Now.Date;
-            //    _forecasts = Enumerable.Range(1, 150).Select(index => new WeatherForecastModel
-            //    {
-            //        Id = index,
-            //        Date = startDate.AddDays(index),
-            //        TemperatureC = rng.Next(-20, 55),
-            //        Summary = Summaries[rng.Next(Summaries.Length)]
-            //    }).ToList();
-            //}
-
-            //// we will cast the data to an IQueriable to simulate an actual database (EF) service
-            //// in a real case, you would be fetching the data from the service, not generating it here
-            //IQueryable<WeatherForecastModel> queriableData = _forecasts.AsQueryable();
-
             try
             {
 
@@ -71,9 +53,9 @@ namespace WasmApp.Server.Controllers
 
 
 
+                //If the aggregate list is cleared the problem is resolved.
+                //gridRequest.Aggregates.Clear();
 
-                // use the Telerik DataSource Extensions to perform the query on the data
-                // the Telerik extension methods can also work on "regular" collections like List<T> and IQueriable<T>
                 DataSourceResult processedData = await queriableData.ToDataSourceResultAsync(gridRequest);
 
 
