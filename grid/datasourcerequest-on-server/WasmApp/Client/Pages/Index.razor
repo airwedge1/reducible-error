@@ -30,32 +30,26 @@
 </TelerikGrid>
 
 @code {
+    protected List<EnvelopeAggregateResult> _aggregateResults = new();
+
     async Task ReadItems(GridReadEventArgs args)
     {
         // we pass the request to the service, and there Telerik DataSource Extension methods will shape the data
         // then the service returns our project-specific envelope so that the data can be serialized by the framework
 
-        //var aggregates = args.Request.Aggregates;
-
-        //args.Request.Aggregates = new List<Telerik.DataSource.AggregateDescriptor>();
-
-        //var groups = args.Request.Groups;
-
-        //args.Request.Groups = new List<Telerik.DataSource.GroupDescriptor>();
-
+        //Telerik server aggregates do not work.  There is a custom field AggregateResults that nwalker wrote that is not included in the examples from Telerik
+        //I am not looking up the _aggregateResults in my example, but it should be able to be done from the group header templates having the raw data.
 
         DataEnvelope<WeatherForecastModel> result = await ForecastService.GetForecastListAsync(args.Request);
 
-
-        //args.Request.Aggregates = aggregates;
-        //args.Request.Groups = groups;
         if (args.Request.Groups.Count > 0)
         {
 
-            //var clientSideResult = result.CurrentPageData.ToDataSourceResult(args.Request);
-
             var data = GroupDataHelpers.DeserializeGroups<WeatherForecastModel>(result.GroupedData);
             args.Data = data.Cast<object>().ToList();
+
+            _aggregateResults = result.AggregateResults;
+
         }
         else
         {
@@ -64,6 +58,4 @@
 
         args.Total = result.TotalItemCount;
     }
-
-    // for brevity, CUD operations are not implemented, only Read
 }
