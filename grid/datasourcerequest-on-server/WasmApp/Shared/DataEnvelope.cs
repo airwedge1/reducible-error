@@ -28,5 +28,20 @@ namespace WasmApp.Shared
         /// Always set this to the total number of records.
         /// </summary>
         public int TotalItemCount { get; set; }
+
+        public List<EnvelopeAggregateResult> AggregateResults { get; set; } = new();
+    }
+
+    public class DoubleGroup
+    {
+        public string Group1 { get; set; }
+        public string Group2 { get; set; }
+    }
+
+    public class EnvelopeAggregateResult
+    {
+        public DoubleGroup GroupKeys { get; set; }
+        public int TempCSum { get; set; }
+
     }
 }

@@ -11,6 +11,15 @@ using Telerik.DataSource.Extensions;
 using System.Text.Json;
 using WasmApp.Server.Models;
 
+using Microsoft.EntityFrameworkCore.DynamicLinq;
+using Telerik.Pivot.Core.Filtering;
+using Telerik.Blazor.Components;
+using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore.Query.Internal;
+
+using LinqKit;
+using Telerik.SvgIcons;
+
 namespace WasmApp.Server.Controllers
 {
     [ApiController]
@@ -37,13 +46,14 @@ namespace WasmApp.Server.Controllers
         // this static list acts as our "database" in this sample
         private static List<WeatherForecastModel> _forecasts { get; set; }
 
+
         [HttpPost]
         public async Task<DataEnvelope<WeatherForecastModel>> Post([FromBody] DataSourceRequest gridRequest)
         {
             try
             {
 
-                var queriableData = _db.WeatherForecasts.Select(p => new WeatherForecastModel()
+                var queryable = _db.WeatherForecasts.Select(p => new WeatherForecastModel()
                 {
                     Date = p.Date.Value,
                     Id = p.Id,
@@ -51,27 +61,63 @@ namespace WasmApp.Server.Controllers
                     TemperatureC = p.TemperatureC.Value
                 });
 
+                
 
+                //You have to clear the aggregates request or else it'll error out
+                gridRequest.Aggregates.Clear();
 
-                //If the aggregate list is cleared the problem is resolved.
-                //gridRequest.Aggregates.Clear();
-
-                DataSourceResult processedData = await queriableData.ToDataSourceResultAsync(gridRequest);
-
+                DataSourceResult processedData = await queryable.ToDataSourceResultAsync(gridRequest);
 
                 DataEnvelope<WeatherForecastModel> dataToReturn;
 
                 if (gridRequest.Groups.Count > 0)
                 {
-                    // If there is grouping, use the field for grouped data
-                    // The app must be able to serialize and deserialize it
-                    // Example helper methods for this are available in this project
-                    // See the GroupDataHelper.DeserializeGroups and JsonExtensions.Deserialize methods
+                    var x = new List<AggregateResult>();
+
                     dataToReturn = new DataEnvelope<WeatherForecastModel>
                     {
                         GroupedData = processedData.Data.Cast<AggregateFunctionsGroup>().ToList(),
                         TotalItemCount = processedData.Total
                     };
+
+                    //Teleriks ToDataSourceResult function does not work.  It throws an error if Aggregates is populated
+                    //This was adopted from https://stackoverflow.com/questions/62265283/entity-framework-core-dynamic-groupby
+                    //It is complex, confusing and always needs to use the 3rd party AsExpandableEFCore from LinqKit library
+
+                    var groupBy1 = GetGroupBy(gridRequest.Groups.First().Member);
+
+                    if(gridRequest.Groups.Count()==1)
+                    {
+                        Expression<Func<WeatherForecastModel, string>> groupBy = g => groupBy1.Invoke(g);
+
+                        dataToReturn.AggregateResults = queryable.AsExpandableEFCore()
+                            .GroupBy(groupBy)
+                            .Select(z => new EnvelopeAggregateResult
+                            {
+                                GroupKeys = new DoubleGroup() { Group1 = z.Key },
+                                TempCSum = z.Sum(s => s.TemperatureC)
+                            }).ToList();
+                    }
+                    else if (gridRequest.Groups.Count() == 2)
+                    {
+
+                        var groupBy2 = GetGroupBy(gridRequest.Groups[1].Member); ;
+
+                        Expression<Func<WeatherForecastModel, DoubleGroup>> groupBy = g => new DoubleGroup { Group1 = groupBy1.Invoke(g), Group2 = groupBy2.Invoke(g) };
+
+                        dataToReturn.AggregateResults = queryable.AsExpandableEFCore()
+                            .GroupBy(groupBy)
+                            .Select(z => new EnvelopeAggregateResult
+                            {
+                                GroupKeys = z.Key,
+                                TempCSum = z.Sum(s => s.TemperatureC)
+                            }).ToList();
+                    }
+                    else
+                    {
+                        throw new Exception("Can only group by up to 2 fields");
+                    }
+
                 }
                 else
                 {
@@ -92,6 +138,24 @@ namespace WasmApp.Server.Controllers
             }
         }
 
-        // for brevity, CUD operations are not implemented, only Read
+        private static Expression<Func<WeatherForecastModel, string>> GetGroupBy(string column)
+        {
+            if (column == nameof(WeatherForecastModel.Date))
+            {
+                return g => g.Date.ToString();
+            }
+            else if(column == nameof(WeatherForecastModel.Summary))
+            {
+                return g => g.Summary.ToString();
+            }
+            else if (column == nameof(WeatherForecastModel.TemperatureC))
+            {
+                return g => g.TemperatureC.ToString();
+            }
+            else
+            {
+                throw new Exception("Can only group by date, summary or temperatureC");
+            }
+        }
     }
 }
